@@ -524,11 +524,11 @@ plt.savefig("static/common_ml_accuracy_comparison.png", dpi=300, bbox_inches="ti
 plt.show()
 
 
-joblib.dump(acem_model, "final/acem_model.pkl")
-joblib.dump(client_models, "final/federated_models.pkl")
-joblib.dump(fed_weights, "final/federated_weights.pkl")
-joblib.dump(scaler, "final/scaler.pkl")
-joblib.dump(feature_names, "final/features.pkl")
+joblib.dump(acem_model, "final/acem_model.pkl", compress=3)
+joblib.dump(client_models, "final/federated_models.pkl", compress=3)
+joblib.dump(fed_weights, "final/federated_weights.pkl", compress=3)
+joblib.dump(scaler, "final/scaler.pkl", compress=3)
+joblib.dump(feature_names, "final/features.pkl", compress=3)
 
 np.save("final/X_train.npy", X_train)
 
