@@ -1,43 +1,50 @@
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import StandardScaler
+
 
 def preprocess_data(path):
-
     df = pd.read_csv(path)
-    df.columns = df.columns.str.strip()
+    df.columns = df.columns.str.strip().str.lower()
 
-    df = df[df["stage"].isin(["s1", "s2", "s3", "s4", "s5"])]
+    required_columns = [
+        "age", "bp", "sg", "al", "bgr",
+        "sc", "sod", "pot", "bu", "hemo", "stage"
+    ]
 
-    df.replace("?", np.nan, inplace=True)
+    missing = [col for col in required_columns if col not in df.columns]
+    if missing:
+        raise ValueError(f"Missing columns: {missing}")
 
-    for col in df.columns:
-        try:
-            df[col] = pd.to_numeric(df[col])
-        except:
-            pass
+    df = df[required_columns].copy()
 
-    for col in df.columns:
-        if df[col].dtype == "object":
-            df[col].fillna(df[col].mode()[0], inplace=True)
-        else:
-            df[col].fillna(df[col].median(), inplace=True)
+    df.replace(["?", "", " "], np.nan, inplace=True)
 
-    df.drop(columns=["class", "affected"], errors="ignore", inplace=True)
+    stage_map = {
+        "s1": 0,
+        "s2": 1,
+        "s3": 2,
+        "s4": 3,
+        "s5": 4
+    }
 
-    stage_map = {"s1": 0, "s2": 1, "s3": 2, "s4": 3, "s5": 4}
+    df["stage"] = df["stage"].astype(str).str.lower().str.strip()
+    df = df[df["stage"].isin(stage_map.keys())]
     df["stage"] = df["stage"].map(stage_map)
 
-    y = df["stage"]
-    X = df.drop("stage", axis=1)
+    feature_cols = [
+        "age", "bp", "sg", "al", "bgr",
+        "sc", "sod", "pot", "bu", "hemo"
+    ]
 
-    for col in X.select_dtypes(include="object").columns:
-        le = LabelEncoder()
-        X[col] = le.fit_transform(X[col].astype(str))
+    for col in feature_cols:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+        df[col] = df[col].fillna(df[col].median())
 
-    feature_names = X.columns.tolist()
+    X = df[feature_cols]
+    y = df["stage"].astype(int)
 
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    return X_scaled, y, feature_names, scaler
+    return X_scaled, y, feature_cols, scaler

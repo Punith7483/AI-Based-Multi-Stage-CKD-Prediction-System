@@ -1,0 +1,32 @@
+{
+    "confusion_metrics_source": "Pal.S (2023) - Prediction for chronic kidney disease by categorical and non-categorical attributes using different machine learning algorithms",
+    "common_ml_accuracy_source": "Previous CKD literature comparison based on Pal.S (2023) and related CKD ML studies",
+    "previous_confusion_metrics": {
+        "Accuracy": 92.0,
+        "Precision": 63.0,
+        "Recall": 55.0,
+        "F1-score": 60.0,
+        "Error Rate": 8.0
+    },
+    "proposed_confusion_metrics": {
+        "Accuracy": 93.0,
+        "Precision": 93.06175254891154,
+        "Recall": 93.00574045705605,
+        "F1-score": 93.02635620208422,
+        "Error Rate": 7.0
+    },
+    "previous_common_ml_scores": {
+        "Logistic Regression": 90.0,
+        "SVM": 91.75,
+        "Random Forest": 92.0,
+        "Gradient Boosting": 91.0,
+        "XGBoost": 91.5
+    },
+    "proposed_common_ml_scores": {
+        "Logistic Regression": 92.5,
+        "SVM": 92.5,
+        "Random Forest": 92.9,
+        "Gradient Boosting": 92.5,
+        "XGBoost": 92.60000000000001
+    }
+}

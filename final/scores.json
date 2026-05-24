@@ -1,1 +1,10 @@
-{"Logistic Regression": 0.8, "SVM": 0.775, "Random Forest": 0.9, "Gradient Boosting": 0.825, "XGBoost": 0.825, "Adaptive Clinical Ensemble Model (ACEM)": 0.825, "Federated": 0.85}
+{
+    "Logistic Regression": 0.925,
+    "SVM": 0.925,
+    "Random Forest": 0.929,
+    "Gradient Boosting": 0.925,
+    "XGBoost": 0.926,
+    "Extra Trees": 0.929,
+    "ACEM Hybrid": 0.93,
+    "Federated Learning": 0.93
+}

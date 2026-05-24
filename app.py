@@ -4,10 +4,13 @@ import joblib
 import matplotlib.pyplot as plt
 from lime.lime_tabular import LimeTabularExplainer
 import datetime
+import json
 
 app = Flask(__name__)
 
-# Load saved files
+# ================================
+# LOAD SAVED MODEL FILES
+# ================================
 model = joblib.load("final/acem_model.pkl")
 fed_models = joblib.load("final/federated_models.pkl")
 fed_weights = joblib.load("final/federated_weights.pkl")
@@ -15,69 +18,120 @@ scaler = joblib.load("final/scaler.pkl")
 feature_names = joblib.load("final/features.pkl")
 X_train = np.load("final/X_train.npy")
 
+# ================================
+# LOAD MODEL ACCURACY SCORES
+# ================================
+with open("final/scores.json", "r") as f:
+    scores = json.load(f)
+
+acem_accuracy = scores.get("ACEM Hybrid", 0) * 100
+fed_accuracy = scores.get("Federated Learning", 0) * 100
+
 class_names = ["Stage 1", "Stage 2", "Stage 3", "Stage 4", "Stage 5"]
 
 
-def safe_float(val):
+# ================================
+# SAFE FLOAT CONVERSION
+# ================================
+def safe_float(value):
     try:
-        if val is None or str(val).strip() == "":
+        if value is None or str(value).strip() == "":
             return 0.0
-        return float(val)
+        return float(value)
     except Exception:
         return 0.0
 
 
+# ================================
+# FEDERATED PREDICTION FUNCTION
+# ================================
 def federated_predict(models, weights, X):
-    prob_sum = np.zeros((X.shape[0], 5), dtype=float)
-    for w, m in zip(weights, models):
-        prob_sum += w * m.predict_proba(X)
-    return prob_sum
+    probs = np.zeros((X.shape[0], 5))
+
+    for weight, model in zip(weights, models):
+        probs += weight * model.predict_proba(X)
+
+    return probs
 
 
+# ================================
+# COMMON GRAPH PATHS
+# ================================
+def common_graph_paths():
+    return {
+        "individual_graph": "static/individual_ml_accuracy.png",
+        "overall_graph": "static/overall_model_comparison.png",
+        "federated_graph": "static/federated_client_accuracy.png",
+        "confusion_graph": "static/confusion_matrix_acem.png",
+        "privacy_graph": "static/privacy_vs_accuracy.png",
+        "confusion_metrics_comparison_graph": "static/confusion_metrics_comparison.png",
+        "common_ml_comparison_graph": "static/common_ml_accuracy_comparison.png"
+    }
+
+
+# ================================
+# HOME PAGE
+# ================================
 @app.route("/")
 def home():
-    return render_template("index.html", values={})
+    return render_template(
+        "index.html",
+        values={},
+        **common_graph_paths()
+    )
 
 
+# ================================
+# PREDICTION ROUTE
+# ================================
 @app.route("/predict", methods=["POST"])
 def predict():
     values = {}
 
-    for f in feature_names:
-        val = request.form.get(f)
-        values[f] = val if val is not None and val != "" else "0"
+    for feature in feature_names:
+        value = request.form.get(feature)
+        values[feature] = value if value not in [None, ""] else "0"
 
-    data = [safe_float(values[f]) for f in feature_names]
-    scaled = scaler.transform([data])
+    data = [safe_float(values[feature]) for feature in feature_names]
+    scaled_data = scaler.transform([data])
 
-    # ACEM prediction
-    pred = model.predict(scaled)[0]
-    prob = np.max(model.predict_proba(scaled)) * 100
+    pred = int(model.predict(scaled_data)[0])
+    prob = float(np.max(model.predict_proba(scaled_data))) * 100
 
-    # Federated prediction
-    fed_probs = federated_predict(fed_models, fed_weights, scaled)
+    fed_probs = federated_predict(fed_models, fed_weights, scaled_data)
     fed_pred = int(np.argmax(fed_probs))
     fed_prob = float(np.max(fed_probs)) * 100
 
     return render_template(
         "index.html",
         values=values,
-        central_result=f"Adaptive Clinical Ensemble Model (ACEM - Hybrid): {class_names[pred]} ({prob:.2f}%)",
-        fed_result=f"Federated: {class_names[fed_pred]} ({fed_prob:.2f}%)",
-        accuracy_graph="static/model_accuracy.png"
+        central_result=(
+            f"ACEM Hybrid Prediction: {class_names[pred]} | "
+            f"Confidence: {prob:.2f}% | "
+            f"Model Accuracy: {acem_accuracy:.2f}%"
+        ),
+        fed_result=(
+            f"Federated Prediction: {class_names[fed_pred]} | "
+            f"Confidence: {fed_prob:.2f}% | "
+            f"Model Accuracy: {fed_accuracy:.2f}%"
+        ),
+        **common_graph_paths()
     )
 
 
+# ================================
+# EXPLAINABILITY ROUTE
+# ================================
 @app.route("/explain", methods=["POST"])
 def explain():
     values = {}
 
-    for f in feature_names:
-        val = request.form.get(f)
-        values[f] = val if val is not None and val != "" else "0"
+    for feature in feature_names:
+        value = request.form.get(feature)
+        values[feature] = value if value not in [None, ""] else "0"
 
-    data = [safe_float(values[f]) for f in feature_names]
-    scaled = scaler.transform([data])
+    data = [safe_float(values[feature]) for feature in feature_names]
+    scaled_data = scaler.transform([data])
 
     explainer = LimeTabularExplainer(
         X_train,
@@ -86,23 +140,27 @@ def explain():
         mode="classification"
     )
 
-    exp = explainer.explain_instance(
-        scaled[0],
+    explanation = explainer.explain_instance(
+        scaled_data[0],
         model.predict_proba,
         num_features=8
     )
 
-    fig = exp.as_pyplot_figure()
+    fig = explanation.as_pyplot_figure()
     path = "static/lime.png"
-    fig.savefig(path, bbox_inches="tight")
+    fig.savefig(path, bbox_inches="tight", dpi=300)
     plt.close(fig)
 
     return render_template(
         "index.html",
         values=values,
-        lime_graph=path + "?t=" + str(datetime.datetime.now().timestamp())
+        lime_graph=path + "?t=" + str(datetime.datetime.now().timestamp()),
+        **common_graph_paths()
     )
 
 
+# ================================
+# RUN APP
+# ================================
 if __name__ == "__main__":
     app.run(debug=True)
